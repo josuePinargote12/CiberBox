@@ -1,0 +1,60 @@
+GUIA DE PRUEBAS DE SEGURIDAD - CIBERBOX
+========================================
+
+ALCANCE Y AUTORIZACION
+---------------------
+Esta guia sirve solo para el laboratorio CiberBox que ejecutas localmente y
+controlas. El objetivo permitido es http://127.0.0.1:4000 y las rutas
+/api/target/* descritas aqui. No pruebes estos pasos contra sitios, redes,
+cuentas o datos de terceros. No expongas el backend a Internet ni a una red
+compartida. Usa solamente los datos ficticios incluidos en el esquema.
+
+PREPARAR EL LABORATORIO
+-----------------------
+1. Inicia MySQL local y carga database/schema.sql en la base ciberbox.
+2. Copia backend/.env.example a backend/.env. Mantén HOST=127.0.0.1 y cambia
+   los secretos JWT de ejemplo por valores locales propios.
+3. Desde la raíz instala dependencias con pnpm install.
+4. Crea el usuario local del dashboard con pnpm seed.
+5. Inicia la aplicación con pnpm dev.
+6. Comprueba que http://127.0.0.1:4000/health responde con status "ok".
+   El dashboard se abre en http://localhost:5173.
+
+PRUEBAS CONTROLADAS
+-------------------
+Registra fecha, ruta, resultado y evidencia saneada. No guardes contraseñas
+reales ni datos personales en capturas o informes.
+
+1) SQL injection en el login de prueba
+   Ruta: POST http://127.0.0.1:4000/api/target/auth/login
+   Envía JSON con email = admin@test.com' OR '1'='1' --  y password = x.
+   El espacio después de -- forma parte del comentario SQL. En este laboratorio
+   la respuesta permite comprobar si la consulta vulnerable acepta la entrada.
+   Usa únicamente esta cuenta ficticia. No alteres ni borres registros.
+
+2) IDOR con los dos usuarios semilla
+   Consulta GET http://127.0.0.1:4000/api/target/users/1 y luego
+   GET http://127.0.0.1:4000/api/target/users/2.
+   Comprueba que la API entrega los perfiles de admin@test.com y user1@test.com
+   sin comprobar quién solicita el recurso. Limita la prueba a esos dos IDs.
+
+3) XSS almacenado, sin ejecutar código
+   Envía POST a http://127.0.0.1:4000/api/target/comments con JSON:
+   {"usuario_id":2,"contenido":"<script>alert('CiberBox')</script>"}
+   Después consulta GET http://127.0.0.1:4000/api/target/comments y confirma
+   que el texto se conserva en la respuesta. No lo insertes en una página como
+   HTML ni ejecutes scripts. El dashboard de CiberBox lo presenta como texto.
+
+CIERRE Y REPORTE
+----------------
+1. Guarda solo evidencia mínima y redactada; no incluyas tokens ni secretos.
+2. Documenta impacto, ruta, resultado y una recomendación de corrección en
+   docs/INFORME_FINAL.md.
+3. Para SQL injection, usa consultas parametrizadas. Para IDOR, valida que el
+   usuario autenticado tenga permiso sobre cada recurso. Para XSS, codifica o
+   sanea el contenido al mostrarlo y conserva el renderizado como texto.
+4. Detén pnpm dev al terminar. Elimina de comentarios de prueba cualquier
+   contenido que ya no necesites y restablece la base solo si es local.
+
+Las vulnerabilidades son deliberadas para aprendizaje. Esta guia no concede
+autorizacion para evaluar otros sistemas.
